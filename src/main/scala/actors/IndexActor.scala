@@ -6,8 +6,10 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import akka.util.ByteString
-import messages.JsonSupport
+import messages.{Contact, JsonSupport}
 import org.htmlcleaner.{HtmlCleaner, HtmlNode, TagNode, TagNodeVisitor}
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import spray.json.JsonParser
 
 import scala.collection.immutable
@@ -152,13 +154,13 @@ class IndexActor
 
         log.debug("[httpReceive] Got response, body: {}", htmlString)
 
+//        val contacts = ListBuffer[ListBuffer[String]]()
+
 //        val xml = XML.loadString(body.utf8String)
 //        log.debug("{}", xml\\"div"\"@class=\"grzx_right_content2\"")
-        val clean = new HtmlCleaner()
+        /*val clean = new HtmlCleaner()
         val tagNode = clean.clean(htmlString)
         val rootNode = tagNode.findElementByAttValue("class", "grzx_right_content2", false, true)
-
-        val contacts = ListBuffer[ListBuffer[String]]()
 
         rootNode.traverse(new TagNodeVisitor {
           override def visit(tagNode: TagNode, htmlNode: HtmlNode): Boolean = {
@@ -177,7 +179,29 @@ class IndexActor
           }
         })
 
-        log.info("获取联系人列表：{}", contacts)
+        log.info("获取联系人列表：{}", contacts)*/
+        val contacts = ListBuffer[Contact]()
+
+        val jsoup = Jsoup.parse(htmlString)
+        val element = jsoup.getElementsByClass("grzx_right_content2")
+        val table = element.first().child(0)
+
+        val lines = table.select("tr")
+
+        for (i <- 1 until lines.size()) {
+          val line = lines.get(i)
+          val props = line.select("td")
+
+          val name = props.get(0).text()
+          val gender = props.get(1).text()
+          val idType = props.get(2).text()
+          val idNumber = props.get(3).text()
+          val mobile = props.get(4).text()
+
+          contacts += Contact(name, gender, idType, idNumber, mobile)
+        }
+
+        log.info("{}", contacts)
       }
 
     case resp @ HttpResponse(code, _, _, _) =>

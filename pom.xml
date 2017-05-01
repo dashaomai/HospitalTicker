@@ -189,6 +189,13 @@
             <version>RELEASE</version>
         </dependency>
 
+        <dependency>
+            <!-- jsoup HTML parser library @ http://jsoup.org/ -->
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>RELEASE</version>
+        </dependency>
+
     </dependencies>
 
 </project>
