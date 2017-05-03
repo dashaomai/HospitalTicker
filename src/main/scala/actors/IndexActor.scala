@@ -7,9 +7,7 @@ import akka.http.scaladsl.model.headers._
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import akka.util.ByteString
 import messages.{Contact, JsonSupport}
-import org.htmlcleaner.{HtmlCleaner, HtmlNode, TagNode, TagNodeVisitor}
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
 import spray.json.JsonParser
 
 import scala.collection.immutable
@@ -152,8 +150,6 @@ class IndexActor
       entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
         val htmlString = body.utf8String
 
-        log.debug("[httpReceive] Got response, body: {}", htmlString)
-
 //        val contacts = ListBuffer[ListBuffer[String]]()
 
 //        val xml = XML.loadString(body.utf8String)
@@ -201,7 +197,9 @@ class IndexActor
           contacts += Contact(name, gender, idType, idNumber, mobile)
         }
 
-        log.info("{}", contacts)
+        log.info("读取联系人信息列表：{}", contacts)
+
+        listHospital(1, 1, cookies, userId)
       }
 
     case resp @ HttpResponse(code, _, _, _) =>
@@ -211,7 +209,55 @@ class IndexActor
     case _ =>
   }
 
-  private def get(path: String, params: Map[String, String] = Map.empty[String, String], cookies: immutable.Seq[HttpHeader], receiver: Receive): Unit = {
+  /***** 列出医院信息 *****/
+  private def listHospital(currentPage: Int, totalPage: Int, cookies: immutable.Seq[HttpHeader], userId: String): Unit = {
+    log.info("列出第 {}/{} 页的医院信息", currentPage, totalPage)
+
+    get(
+      s"/hp/$currentPage,0,0,0.htm",
+      cookies = cookies,
+      receiver = listHospitalProcess(currentPage, totalPage, cookies, userId)
+    )
+  }
+
+  private def listHospitalProcess(currentPage: Int, totalPage: Int, cookies: immutable.Seq[HttpHeader], userId: String): Receive = {
+    case HttpResponse(StatusCodes.OK, _, entity, _) =>
+      entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+        val htmlString = body.utf8String
+
+        val jsoup = Jsoup.parse(htmlString)
+        val hospitalElements = jsoup.select("dd.yiyuan_co_dd")
+
+        for (i <- 0 until hospitalElements.size()) {
+          val element = hospitalElements.get(i)
+
+          
+        }
+
+        if (0 <= htmlString.indexOf("<div id=\"yiyuan_list\">")) {
+
+
+          listHospital(currentPage + 1, totalPage, cookies, userId)
+        } else {
+          log.error("解析医院页 {}/{} 返回值时未检测到医院列表结构")
+        }
+
+      }
+
+    case resp @ HttpResponse(code, _, _, _) =>
+      log.warning("[httpReceive] Request failed, response code:{}", code)
+      resp.discardEntityBytes()
+
+    case _ =>
+  }
+
+  private def get
+  (
+    path: String,
+    params: Map[String, String] = Map.empty[String, String],
+    cookies: immutable.Seq[HttpHeader],
+    receiver: Receive
+  ): Unit = {
     context.become(receiver)
 
     http.singleRequest(
