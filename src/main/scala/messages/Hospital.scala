@@ -129,3 +129,18 @@ object BookDate {
   val AFTERNOON: Int = 1
   val EVENING: Int = 2
 }
+
+final case class AccountProps
+(
+  username: String,
+  password: String
+)
+
+final case class BookProps
+(
+  hospitalName: String,
+  catalogName: String,
+  departmentName: String,
+  date: String,
+  time: Int
+)

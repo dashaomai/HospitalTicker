@@ -6,7 +6,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import akka.util.ByteString
-import messages.{Contact, JsonSupport}
+import messages.{AccountProps, BookProps, Contact, JsonSupport}
 import org.jsoup.Jsoup
 import spray.json.JsonParser
 
@@ -18,13 +18,8 @@ import scala.collection.mutable.ListBuffer
   */
 class IndexActor
 (
-  loginName: String ,
-  loginPass: String,
-  hospitalName: String,
-  catalogName: String,
-  departmentName: String,
-  date: String,
-  time: Int
+  accountProps: AccountProps,
+  bookProps: BookProps
 ) extends Actor with ActorLogging with JsonSupport {
 
   import akka.pattern.pipe
@@ -35,7 +30,7 @@ class IndexActor
   private val http = Http(context.system)
 
   override def preStart(): Unit = {
-    login(loginName, loginPass)
+    login(accountProps.username, accountProps.password)
   }
 
   override def receive: Receive = {
@@ -150,32 +145,6 @@ class IndexActor
       entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
         val htmlString = body.utf8String
 
-//        val contacts = ListBuffer[ListBuffer[String]]()
-
-//        val xml = XML.loadString(body.utf8String)
-//        log.debug("{}", xml\\"div"\"@class=\"grzx_right_content2\"")
-        /*val clean = new HtmlCleaner()
-        val tagNode = clean.clean(htmlString)
-        val rootNode = tagNode.findElementByAttValue("class", "grzx_right_content2", false, true)
-
-        rootNode.traverse(new TagNodeVisitor {
-          override def visit(tagNode: TagNode, htmlNode: HtmlNode): Boolean = {
-            htmlNode match {
-              case tgNode: TagNode =>
-                tgNode.getName match {
-                  case "tr" =>
-                    contacts += ListBuffer[String]()
-
-                  case "th" | "td" =>
-                    contacts.last += tgNode.getText.toString
-                }
-            }
-
-            true
-          }
-        })
-
-        log.info("获取联系人列表：{}", contacts)*/
         val contacts = ListBuffer[Contact]()
 
         val jsoup = Jsoup.parse(htmlString)
@@ -269,39 +238,16 @@ class IndexActor
       )
     ).pipeTo(self)
   }
-
-  /*private def httpReceive(cookies: immutable.Seq[HttpHeader], receiver: Receive): Receive = {
-    case HttpResponse(StatusCodes.OK, _, entity, _) =>
-      entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
-        log.debug("[httpReceive] Got response, body: {}", body.utf8String)
-      }
-
-    case resp @ HttpResponse(code, _, _, _) =>
-      log.warning("[httpReceive] Request failed, response code:{}", code)
-      resp.discardEntityBytes()
-
-    case _ =>
-  }*/
 }
 
 object IndexActor {
   def props
   (
-    loginName: String ,
-    loginPass: String,
-    hospitalName: String,
-    catalogName: String,
-    departmentName: String,
-    date: String,
-    time: Int
+    accountProps: AccountProps,
+    bookPrpos: BookProps
   ): Props = Props(
     classOf[IndexActor],
-    loginName: String ,
-    loginPass: String,
-    hospitalName: String,
-    catalogName: String,
-    departmentName: String,
-    date: String,
-    time: Int
+    accountProps: AccountProps,
+    bookPrpos: BookProps
   )
 }
