@@ -182,18 +182,21 @@ class IndexActor
   private def listHospital(currentPage: Int, totalPage: Int, cookies: immutable.Seq[HttpHeader], userId: String): Unit = {
     log.info("列出第 {}/{} 页的医院信息", currentPage, totalPage)
 
+    Thread.sleep(1000)
+
     get(
       s"/hp/$currentPage,0,0,0.htm",
       cookies = cookies,
-      receiver = listHospitalProcess(currentPage, totalPage, cookies, userId)
+      receiver = listHospitalProcess(currentPage, cookies, userId)
     )
   }
 
-  private def listHospitalProcess(currentPage: Int, totalPage: Int, cookies: immutable.Seq[HttpHeader], userId: String): Receive = {
+  private def listHospitalProcess(currentPage: Int, cookies: immutable.Seq[HttpHeader], userId: String): Receive = {
     case HttpResponse(StatusCodes.OK, _, entity, _) =>
       entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
         val htmlString = body.utf8String
 
+        // 解析医院信息
         val jsoup = Jsoup.parse(htmlString)
         val hospitalElements = jsoup.select("dd.yiyuan_co_dd")
 
@@ -203,10 +206,15 @@ class IndexActor
           
         }
 
+        // 更新医院列表的总页数
+        val totalDom = jsoup.select("input[name=p_totalPage]")
+        val newTotalPage = totalDom.`val`().toInt
+
         if (0 <= htmlString.indexOf("<div id=\"yiyuan_list\">")) {
 
 
-          listHospital(currentPage + 1, totalPage, cookies, userId)
+          if (currentPage < newTotalPage)
+            listHospital(currentPage + 1, newTotalPage, cookies, userId)
         } else {
           log.error("解析医院页 {}/{} 返回值时未检测到医院列表结构")
         }
